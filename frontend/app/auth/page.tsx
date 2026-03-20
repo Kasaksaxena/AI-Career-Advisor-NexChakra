@@ -18,7 +18,9 @@ export default function AuthPage() {
     setLoading(true);
     const endpoint = isLogin ? "/login" : "/signup";
     try {
-      const res = await axios.post(`http://localhost:8000${endpoint}`, { email, password });
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+      const res = await axios.post(`${API_URL}${endpoint}`, { email, password });
+
       
       if (isLogin) {
         // Successful Login
