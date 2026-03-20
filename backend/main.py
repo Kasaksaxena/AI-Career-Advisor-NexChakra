@@ -350,7 +350,7 @@ async def get_interview_questions(request: InterviewPrepRequest):
         raise HTTPException(status_code=500, detail="Failed to generate interview questions")
 
 
-─── SOUL CHAT ───────────────────────────────────────────────────────────────
+#─── SOUL CHAT ───────────────────────────────────────────────────────────────
 
 @app.post("/career-soul-chat")
 async def soul_chat(request: ChatRequest):
