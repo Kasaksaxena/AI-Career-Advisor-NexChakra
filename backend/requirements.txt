@@ -1,0 +1,24 @@
+# --- Core Framework ---
+fastapi==0.109.0
+uvicorn==0.27.0
+python-multipart==0.0.9
+
+# --- AI & Data Parsing ---
+# Groq 0.5.0 is more flexible with dependencies
+groq==0.5.0
+PyMuPDF==1.23.22
+python-dotenv==1.0.1
+
+# --- Database & Auth ---
+# Pinning Supabase to a stable version that likes httpx 0.25
+supabase==2.4.5
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+
+# --- Fixed Networking Layer ---
+# This version is the "sweet spot" for both Supabase and Groq
+httpx==0.25.2
+pydantic==2.6.1
+pydantic-settings==2.1.0
+typing-extensions==4.9.0
