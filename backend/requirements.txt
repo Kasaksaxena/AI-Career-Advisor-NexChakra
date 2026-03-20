@@ -11,7 +11,7 @@ python-dotenv==1.0.1
 
 # --- Database & Auth ---
 # Pinning Supabase to a stable version that likes httpx 0.25
-supabase==2.4.5
+supabase>=2.10.0
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
