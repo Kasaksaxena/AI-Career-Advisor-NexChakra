@@ -30,8 +30,7 @@ if not all([GROQ_KEY, SB_URL, SB_KEY]):
     print("⚠️  Warning: Missing one or more environment variables")
 
 client = Groq(api_key=GROQ_KEY)
-supabase: Client = create_client(SB_URL, SB_KEY)
-
+supabase: Client = create_client(SB_URL, SB_KEY) if SB_URL and SB_KEY else None
 # ─── GROQ HELPER ────────────────────────────────────────────────────────────
 
 def groq_json(system: str, user: str, max_tokens: int = 600) -> dict:
