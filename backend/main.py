@@ -26,11 +26,16 @@ GROQ_KEY = os.getenv("GROQ_API_KEY")
 SB_URL = os.getenv("SUPABASE_URL")
 SB_KEY = os.getenv("SUPABASE_KEY")
 
-if not all([GROQ_KEY, SB_URL, SB_KEY]):
-    print("⚠️  Warning: Missing one or more environment variables")
+def get_supabase():
+    return create_client(SB_URL, SB_KEY)
 
-client = Groq(api_key=GROQ_KEY)
-supabase: Client = create_client(SB_URL, SB_KEY) if SB_URL and SB_KEY else None
+supabase = None
+try:
+    supabase = create_client(SB_URL, SB_KEY)
+except Exception as e:
+    print(f"⚠️ Supabase init failed: {e}")
+
+
 # ─── GROQ HELPER ────────────────────────────────────────────────────────────
 
 def groq_json(system: str, user: str, max_tokens: int = 600) -> dict:
