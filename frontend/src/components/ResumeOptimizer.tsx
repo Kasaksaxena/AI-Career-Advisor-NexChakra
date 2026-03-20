@@ -35,10 +35,10 @@ export default function ResumeOptimizer({ userId }: { userId: string }) {
     const formData = new FormData();
     formData.append("file", file);
     try {
-      await axios.post(`${API_URL}/upload-resume`, formData);
-
+      await axios.post(`${API_URL}/upload-resume?user_id=${userId}`, formData);
       setStatus("optimizing");
       const res = await axios.post(`${API_URL}/improve-resume?user_id=${userId}`);
+      
 
       setSuggestions(res.data.suggestions);
       setStatus("done");

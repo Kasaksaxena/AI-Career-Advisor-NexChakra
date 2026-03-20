@@ -130,9 +130,8 @@ def health_check():
 
 @app.get("/profile/{user_id}")
 async def get_profile(user_id: str):
-    """Fetch profile by user ID — used by the dashboard for dynamic stats."""
     try:
-        res = supabase.table("profiles").select("*").eq("id", user_id).execute()
+        res = supabase.table("profiles").select("*").eq("user_id", user_id).execute()
         if not res.data:
             raise HTTPException(status_code=404, detail="Profile not found")
         return res.data[0]
@@ -140,7 +139,6 @@ async def get_profile(user_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 # ─── AUTH ────────────────────────────────────────────────────────────────────
 
@@ -188,7 +186,7 @@ async def login(user: UserAuth):
 # ─── RESUME ──────────────────────────────────────────────────────────────────
 
 @app.post("/upload-resume")
-async def upload_resume(file: UploadFile = File(...)):
+async def upload_resume(file: UploadFile = File(...), user_id: str = Query(None)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDFs allowed")
     try:
@@ -205,14 +203,18 @@ async def upload_resume(file: UploadFile = File(...)):
             max_tokens=400,
         )
 
-        
-        supabase.table("profiles").upsert({
-        "email": data.get("email", ""),
-        "full_name": data.get("full_name", ""),
-        "skills": data.get("skills", []),
-        "education": data.get("education", []),
-        "raw_resume_text": full_text[:3000],  # ← ADD THIS
-    }, on_conflict="email").execute()
+        upsert_data = {
+            "email": data.get("email", ""),
+            "full_name": data.get("full_name", ""),
+            "skills": data.get("skills", []),
+            "education": data.get("education", []),
+            "raw_resume_text": full_text[:3000],
+            "user_id": user_id,
+        }
+
+        supabase.table("profiles").upsert(
+            upsert_data, on_conflict="email"
+        ).execute()
 
         return {"status": "success", "data": data}
     except Exception as e:
@@ -222,10 +224,10 @@ async def upload_resume(file: UploadFile = File(...)):
 @app.post("/improve-resume")
 async def improve_resume(user_id: str = Query(...)):
     try:
-        user = supabase.table("profiles").select("raw_resume_text").eq("id", user_id).single().execute()
-        text = user.data.get("raw_resume_text", "") if user.data else ""
+        res = supabase.table("profiles").select("raw_resume_text").eq("user_id", user_id).execute()
+        text = res.data[0].get("raw_resume_text", "") if res.data else ""
         if not text:
-            raise HTTPException(status_code=404, detail="No resume text found. Please upload your resume first.")
+            raise HTTPException(status_code=404, detail="No resume found. Please upload first.")
         result = groq_text(
             system="You are an elite resume coach. Rewrite bullets to be impact-driven with metrics. Be concise.",
             user=f"Rewrite these resume bullets with strong action verbs and measurable results:\n{text[:1200]}",
@@ -236,7 +238,6 @@ async def improve_resume(user_id: str = Query(...)):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
 
 # ─── ROADMAP ─────────────────────────────────────────────────────────────────
 

@@ -230,7 +230,7 @@ function SkillGapWithUpload({ userId }: { userId: string }) {
     const fd = new FormData();
     fd.append("file", file);
     try {
-      await axios.post(`${API_URL}/upload-resume`, fd);
+      await axios.post(`${API_URL}/upload-resume?user_id=${userId}`, fd);
       setStatus("ready");
     } catch {
       // swallow — let user retry
@@ -364,7 +364,7 @@ export default function DashboardPage() {
     fd.append("file", file);
     try {
       
-      await axios.post(`${API_URL}/upload-resume`, fd);
+      await axios.post(`${API_URL}/upload-resume?user_id=${userId}`, fd);
       await fetchProfile(userId); // refresh skill count immediately
     } catch {
       // swallow
