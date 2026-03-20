@@ -231,7 +231,9 @@ function SkillGapWithUpload({ userId }: { userId: string }) {
     fd.append("file", file);
     try {
       await axios.post(`${API_URL}/upload-resume?user_id=${userId}`, fd);
-      setStatus("ready");
+      const r = await axios.get(`${API_URL}/profile/${userId}`);
+      setStatus(r.data?.skills?.length ? "ready" : "noprofile");
+      
     } catch {
       // swallow — let user retry
     } finally {
