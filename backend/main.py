@@ -34,6 +34,7 @@ try:
     supabase = create_client(SB_URL, SB_KEY)
 except Exception as e:
     print(f"⚠️ Supabase init failed: {e}")
+client = Groq(api_key=GROQ_KEY)  # ← ADD THIS LINE (it's missing!)
 
 
 # ─── GROQ HELPER ────────────────────────────────────────────────────────────
