@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { Search, Loader2, TrendingUp, Briefcase, BookOpen, ArrowRight } from "lucide-react";
 import axios from "axios";
+import API_URL from "../lib/api";
+
 
 const POPULAR = [
   "Software Engineering","Medicine","Graphic Design","Finance & Banking","Law",
@@ -25,7 +27,7 @@ export default function CareerExplorer() {
     if (!field.trim()) return;
     setLoading(true); setData(null); setSearched(field);
     try {
-      const res = await axios.post("http://localhost:8000/explore-field", { field });
+      const res = await axios.post(`${API_URL}/explore-field`, { field });
       setData(res.data);
     } catch {
       setData({

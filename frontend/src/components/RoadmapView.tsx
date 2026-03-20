@@ -6,6 +6,8 @@ import {
   ArrowRight, Rocket, Loader2, AlertCircle, ChevronDown, Search,
 } from "lucide-react";
 import axios from "axios";
+import API_URL from "../lib/api";
+
 
 // ── Suggested roles shown in the dropdown ────────────────────────────────
 const SUGGESTED_ROLES = [
@@ -88,7 +90,7 @@ export default function RoadmapView({ userId }: { userId: string }) {
     setRoadmap(null);
     setShowDropdown(false);
     try {
-      const res = await axios.post("http://localhost:8000/generate-roadmap", {
+      const res = await axios.post(`${API_URL}/generate-roadmap`, {
         user_id:     userId || "guest",
         target_role: role.trim(),
       });

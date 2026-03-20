@@ -2,6 +2,7 @@
 import { useState, useRef } from "react";
 import { Upload, Sparkles, Wand2, Check, Loader2, FileText, X } from "lucide-react";
 import axios from "axios";
+import API_URL from "../lib/api";
 
 export default function ResumeOptimizer({ userId }: { userId: string }) {
   const [file,        setFile]        = useState<File | null>(null);
@@ -34,11 +35,11 @@ export default function ResumeOptimizer({ userId }: { userId: string }) {
     const formData = new FormData();
     formData.append("file", file);
     try {
-      await axios.post("http://localhost:8000/upload-resume", formData);
+      await axios.post(`${API_URL}/upload-resume`, formData);
+
       setStatus("optimizing");
-      const res = await axios.post(
-        `http://localhost:8000/improve-resume?user_id=${userId}`
-      );
+      const res = await axios.post(`${API_URL}/improve-resume?user_id=${userId}`);
+
       setSuggestions(res.data.suggestions);
       setStatus("done");
     } catch {

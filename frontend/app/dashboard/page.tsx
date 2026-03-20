@@ -18,7 +18,7 @@ import MarketInsights  from "@/src/components/Marketinsights";
 import CareerExplorer  from "@/src/components/Careerexplorer";
 
 import "./dashboard.css";
-
+import API_URL from "@/src/lib/api";
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────────────────────────
@@ -230,7 +230,7 @@ function SkillGapWithUpload({ userId }: { userId: string }) {
     const fd = new FormData();
     fd.append("file", file);
     try {
-      await axios.post("http://localhost:8000/upload-resume", fd);
+      await axios.post(`${API_URL}/upload-resume`, fd);
       setStatus("ready");
     } catch {
       // swallow — let user retry
@@ -243,7 +243,7 @@ function SkillGapWithUpload({ userId }: { userId: string }) {
 
   useEffect(() => {
     if (!userId) return;
-    axios.get(`http://localhost:8000/profile/${userId}`)
+       axios.get(`${API_URL}/profile/${userId}`)
       .then((r) => setStatus(r.data?.skills?.length ? "ready" : "noprofile"))
       .catch(() => setStatus("noprofile"));
   }, [userId]);
@@ -346,7 +346,7 @@ export default function DashboardPage() {
   const fetchProfile = useCallback(async (id: string) => {
     if (!id) return;
     try {
-      const r = await axios.get(`http://localhost:8000/profile/${id}`);
+      const r = await axios.get(`${API_URL}/profile/${id}`);
       setSkills(r.data?.skills ?? []);
     } catch {
       setSkills([]);
@@ -363,7 +363,8 @@ export default function DashboardPage() {
     const fd = new FormData();
     fd.append("file", file);
     try {
-      await axios.post("http://localhost:8000/upload-resume", fd);
+      
+      await axios.post(`${API_URL}/upload-resume`, fd);
       await fetchProfile(userId); // refresh skill count immediately
     } catch {
       // swallow

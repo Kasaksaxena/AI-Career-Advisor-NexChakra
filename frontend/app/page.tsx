@@ -6,6 +6,8 @@ import {
   ArrowRight, Sparkles, Brain, Target, Map, MessageSquare,
   TrendingUp, Compass, ChevronDown, Star,
 } from "lucide-react";
+import API_URL from "@/src/lib/api";
+
 
 // ── CONSTANTS ─────────────────────────────────────────────────────────────
 const FEATURES = [

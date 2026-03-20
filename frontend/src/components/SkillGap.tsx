@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Target, Zap, BookOpen, CheckCircle2, Loader2, RefreshCw } from "lucide-react";
 import axios from "axios";
+import API_URL from "../lib/api";
 
 const ROLES = [
   "Senior Backend Engineer",
@@ -35,10 +36,10 @@ export default function SkillGap({ userId }: { userId: string }) {
     setLoading(true);
     setData(null);
     try {
-      const res = await axios.post("http://localhost:8000/analyze-gap", {
-        user_id: userId,
-        target_role: role,
-      });
+      const res = await axios.post(`${API_URL}/analyze-gap`, {user_id: userId,
+        target_role: role,});
+
+      
       setData(res.data as GapData);
     } catch {
       setData({

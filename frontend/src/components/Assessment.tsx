@@ -3,7 +3,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, ArrowRight, RotateCcw, TrendingUp, Loader2 } from "lucide-react";
 import axios from "axios";
-
+import API_URL from "../lib/api";
 const questions = [
   {
     q: "What type of work energises you most?",
@@ -44,7 +44,7 @@ export default function Assessment() {
   const submit = async () => {
     setLoading(true);
     try {
-      const res = await axios.post("http://localhost:8000/career-assessment", {
+      const res = await axios.post(`${API_URL}/career-assessment`, {
         answers,
         interests: interest || "general",
         education_level: edu,

@@ -2,6 +2,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Send, Bot, User } from "lucide-react";
 import axios from "axios";
+import API_URL from "../lib/api";
+
 
 interface Msg { role: "assistant" | "user"; text: string; }
 
@@ -31,7 +33,7 @@ export default function SoulChat({ userId }: { userId: string }) {
         role: m.role === "assistant" ? "assistant" : "user",
         content: m.text,
       }));
-      const res = await axios.post("http://localhost:8000/career-soul-chat", {
+      const res = await axios.post(`${API_URL}/career-soul-chat`, {
         user_id: userId || "guest",
         message: text,
         history,

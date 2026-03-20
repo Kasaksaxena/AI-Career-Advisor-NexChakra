@@ -4,6 +4,7 @@ import {
   TrendingUp, Building, Zap, Globe, Loader2, Wifi, WifiOff,
 } from "lucide-react";
 import axios from "axios";
+import API_URL from "../lib/api";
 
 const REGIONS = [
   "India (₹)",
@@ -43,7 +44,7 @@ export default function MarketInsights({ defaultRegion }: MarketInsightsProps) {
     setLoading(true);
     setData(null);
     try {
-      const res = await axios.post("http://localhost:8000/market-insights", {
+      const res = await axios.post(`${API_URL}/market-insights`, {
         role,
         region,
       });
