@@ -204,12 +204,14 @@ async def upload_resume(file: UploadFile = File(...)):
             max_tokens=400,
         )
 
+        
         supabase.table("profiles").upsert({
-            "email": data.get("email", ""),
-            "full_name": data.get("full_name", ""),
-            "skills": data.get("skills", []),
-            "education": data.get("education", []),
-        }, on_conflict="email").execute()
+        "email": data.get("email", ""),
+        "full_name": data.get("full_name", ""),
+        "skills": data.get("skills", []),
+        "education": data.get("education", []),
+        "raw_resume_text": full_text[:3000],  # ← ADD THIS
+    }, on_conflict="email").execute()
 
         return {"status": "success", "data": data}
     except Exception as e:
