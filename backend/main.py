@@ -26,9 +26,6 @@ GROQ_KEY = os.getenv("GROQ_API_KEY")
 SB_URL = os.getenv("SUPABASE_URL")
 SB_KEY = os.getenv("SUPABASE_KEY")
 
-def get_supabase():
-    return create_client(SB_URL, SB_KEY)
-
 supabase = None
 try:
     supabase = create_client(SB_URL, SB_KEY)
@@ -38,14 +35,9 @@ except Exception as e:
 client = Groq(api_key=GROQ_KEY)
 
 
-# ─── GROQ HELPER ────────────────────────────────────────────────────────────
-
 def groq_json(system: str, user: str, max_tokens: int = 600) -> dict:
     res = client.chat.completions.create(
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
+        messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
         model="llama-3.3-70b-versatile",
         response_format={"type": "json_object"},
         max_tokens=max_tokens,
@@ -56,18 +48,13 @@ def groq_json(system: str, user: str, max_tokens: int = 600) -> dict:
 
 def groq_text(system: str, user: str, max_tokens: int = 350) -> str:
     res = client.chat.completions.create(
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
+        messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
         model="llama-3.3-70b-versatile",
         max_tokens=max_tokens,
         temperature=0.5,
     )
     return res.choices[0].message.content.strip()
 
-
-# ─── MODELS ─────────────────────────────────────────────────────────────────
 
 class RoadmapStep(BaseModel):
     title: str
@@ -118,14 +105,11 @@ class AssessmentRequest(BaseModel):
 class CareerExploreRequest(BaseModel):
     field: str
 
-# ─── HEALTH ─────────────────────────────────────────────────────────────────
 
 @app.get("/")
 def health_check():
     return {"status": "Backend is running", "database": "Connected" if SB_URL else "Disconnected"}
 
-
-# ─── PROFILE ─────────────────────────────────────────────────────────────────
 
 @app.get("/profile/{user_id}")
 async def get_profile(user_id: str):
@@ -139,8 +123,6 @@ async def get_profile(user_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# ─── AUTH ────────────────────────────────────────────────────────────────────
 
 @app.post("/signup")
 async def signup(user: UserAuth):
@@ -183,56 +165,61 @@ async def login(user: UserAuth):
         raise HTTPException(status_code=500, detail="Authentication system error")
 
 
-# ─── RESUME ──────────────────────────────────────────────────────────────────
-
 @app.post("/upload-resume")
 async def upload_resume(file: UploadFile = File(...), user_id: str = Query(None)):
     if not file.filename.endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Only PDFs allowed")
     try:
         pdf_content = await file.read()
+        print(f"PDF bytes received: {len(pdf_content)}")
+
         doc = fitz.open(stream=pdf_content, filetype="pdf")
-        full_text = "".join([page.get_text() for page in doc])
+        full_text = ""
+        for page in doc:
+            full_text += page.get_text()
+        doc.close()
+
+        print(f"Extracted text chars: {len(full_text)}")
+
+        if not full_text.strip():
+            raise HTTPException(status_code=400, detail="PDF has no extractable text. Please use a text-based PDF.")
 
         data = groq_json(
             system='Extract resume info. Return ONLY valid JSON, no extra text.',
             user=(
                 'Extract: {"full_name":"","email":"","skills":[],"experience":[],"education":[]}\n'
-                f'Resume (first 2500 chars):\n{full_text[:2500]}'
+                f'Resume:\n{full_text[:2500]}'
             ),
             max_tokens=400,
         )
 
+        print(f"Skills found: {data.get('skills', [])}")
+
+        profile_data = {
+            "email": data.get("email", ""),
+            "full_name": data.get("full_name", ""),
+            "skills": data.get("skills", []),
+            "education": data.get("education", []),
+            "raw_resume_text": full_text[:3000],
+        }
+
         if user_id:
             existing = supabase.table("profiles").select("id").eq("user_id", user_id).execute()
             if existing.data:
-                supabase.table("profiles").update({
-                    "email": data.get("email", ""),
-                    "full_name": data.get("full_name", ""),
-                    "skills": data.get("skills", []),
-                    "education": data.get("education", []),
-                    "raw_resume_text": full_text[:3000],
-                }).eq("user_id", user_id).execute()
+                supabase.table("profiles").update(profile_data).eq("user_id", user_id).execute()
+                print(f"Updated profile for user_id={user_id}")
             else:
-                supabase.table("profiles").insert({
-                    "email": data.get("email", ""),
-                    "full_name": data.get("full_name", ""),
-                    "skills": data.get("skills", []),
-                    "education": data.get("education", []),
-                    "raw_resume_text": full_text[:3000],
-                    "user_id": user_id,
-                }).execute()
+                profile_data["user_id"] = user_id
+                supabase.table("profiles").insert(profile_data).execute()
+                print(f"Inserted profile for user_id={user_id}")
         else:
-            supabase.table("profiles").upsert({
-                "email": data.get("email", ""),
-                "full_name": data.get("full_name", ""),
-                "skills": data.get("skills", []),
-                "education": data.get("education", []),
-                "raw_resume_text": full_text[:3000],
-            }, on_conflict="email").execute()
+            supabase.table("profiles").upsert(profile_data, on_conflict="email").execute()
 
         return {"status": "success", "data": data}
+    except HTTPException:
+        raise
     except Exception as e:
+        print(f"Upload error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -240,9 +227,11 @@ async def upload_resume(file: UploadFile = File(...), user_id: str = Query(None)
 async def improve_resume(user_id: str = Query(...)):
     try:
         res = supabase.table("profiles").select("raw_resume_text").eq("user_id", user_id).execute()
+        print(f"improve-resume profiles found: {len(res.data)}")
         text = res.data[0].get("raw_resume_text", "") if res.data else ""
+        print(f"raw_resume_text chars: {len(text) if text else 0}")
         if not text:
-            raise HTTPException(status_code=404, detail="No resume found. Please upload first.")
+            raise HTTPException(status_code=404, detail="No resume text found. Please upload your resume first.")
         result = groq_text(
             system="You are an elite resume coach. Rewrite bullets to be impact-driven with metrics. Be concise.",
             user=f"Rewrite these resume bullets with strong action verbs and measurable results:\n{text[:1200]}",
@@ -255,14 +244,11 @@ async def improve_resume(user_id: str = Query(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ─── ROADMAP ─────────────────────────────────────────────────────────────────
-
 @app.post("/generate-roadmap", response_model=CareerResponse)
 async def generate_roadmap(request: RoadmapRequest):
     try:
         res = supabase.table("profiles").select("skills").eq("user_id", request.user_id).execute()
         user_skills = [s.lower() for s in (res.data[0].get("skills", []) if res.data else [])]
-
         ai_data = groq_json(
             system='You are a career architect. Return ONLY compact JSON.',
             user=(
@@ -272,16 +258,13 @@ async def generate_roadmap(request: RoadmapRequest):
             ),
             max_tokens=500,
         )
-
         raw_steps = ai_data.get("steps", [])
         processed = []
         found_current = False
-
         for step in raw_steps:
             step_skills = [s.lower() for s in step.get("skills", [])]
             match_count = sum(1 for s in step_skills if any(u in s for u in user_skills))
             ratio = match_count / max(len(step_skills), 1)
-
             if ratio >= 0.5:
                 status = "completed"
             elif not found_current:
@@ -289,7 +272,6 @@ async def generate_roadmap(request: RoadmapRequest):
                 found_current = True
             else:
                 status = "upcoming"
-
             processed.append(RoadmapStep(
                 title=step.get("title", "Phase"),
                 status=status,
@@ -297,16 +279,12 @@ async def generate_roadmap(request: RoadmapRequest):
                 skills=step.get("skills", []),
                 icon=step.get("icon", "layers"),
             ))
-
         match_score = min(60 + len(user_skills) * 3, 97)
         return CareerResponse(career_path=request.target_role, match_score=match_score, steps=processed)
-
     except Exception as e:
         print(f"Roadmap Error: {e}")
         raise HTTPException(status_code=500, detail="Trajectory calculation failed")
 
-
-# ─── MARKET INSIGHTS ─────────────────────────────────────────────────────────
 
 @app.post("/market-insights")
 async def get_market_insights(request: MarketInsightRequest):
@@ -327,8 +305,6 @@ async def get_market_insights(request: MarketInsightRequest):
         raise HTTPException(status_code=500, detail="Market data unavailable")
 
 
-# ─── GAP ANALYSIS ────────────────────────────────────────────────────────────
-
 @app.post("/analyze-gap")
 async def analyze_gap(request: GapAnalysisRequest):
     try:
@@ -339,7 +315,6 @@ async def analyze_gap(request: GapAnalysisRequest):
                 "certifications": ["No profile found"],
                 "suggested_project": "Complete your profile to get a personalised project recommendation!",
             }
-
         current_skills = res.data[0].get("skills", [])
         data = groq_json(
             system='Career gap analyst. Return ONLY JSON. Be specific and concise.',
@@ -354,8 +329,6 @@ async def analyze_gap(request: GapAnalysisRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail="Failed to analyze gap")
 
-
-# ─── INTERVIEW PREP ──────────────────────────────────────────────────────────
 
 @app.post("/mock-interview-prep")
 async def get_interview_questions(request: InterviewPrepRequest):
@@ -374,8 +347,6 @@ async def get_interview_questions(request: InterviewPrepRequest):
         raise HTTPException(status_code=500, detail="Failed to generate interview questions")
 
 
-# ─── SOUL CHAT ───────────────────────────────────────────────────────────────
-
 @app.post("/career-soul-chat")
 async def soul_chat(request: ChatRequest):
     system_prompt = (
@@ -389,19 +360,13 @@ async def soul_chat(request: ChatRequest):
         for h in (request.history or [])[-6:]:
             messages.append({"role": h["role"], "content": h["content"]})
         messages.append({"role": "user", "content": request.message})
-
         res = client.chat.completions.create(
-            messages=messages,
-            model="llama-3.3-70b-versatile",
-            max_tokens=250,
-            temperature=0.6,
+            messages=messages, model="llama-3.3-70b-versatile", max_tokens=250, temperature=0.6,
         )
         return {"response": res.choices[0].message.content.strip()}
     except Exception:
         raise HTTPException(status_code=500, detail="Soul is resting. Try again shortly.")
 
-
-# ─── MENTOR MATCH ────────────────────────────────────────────────────────────
 
 @app.post("/mentor-match")
 async def get_mentor_recommendation(user_id: str = Query(...)):
@@ -421,8 +386,6 @@ async def get_mentor_recommendation(user_id: str = Query(...)):
         raise HTTPException(status_code=500, detail="Mentor matching failed")
 
 
-# ─── PROGRESS ────────────────────────────────────────────────────────────────
-
 @app.post("/update-progress")
 async def update_progress(request: ProgressUpdate):
     try:
@@ -431,13 +394,10 @@ async def update_progress(request: ProgressUpdate):
         if request.completed_skill not in skills:
             skills.append(request.completed_skill)
         supabase.table("profiles").update({"skills": skills}).eq("user_id", request.user_id).execute()
-        readiness_score = min(len(skills) * 5, 100)
-        return {"message": f"Skill '{request.completed_skill}' added!", "new_readiness_score": readiness_score}
+        return {"message": f"Skill '{request.completed_skill}' added!", "new_readiness_score": min(len(skills) * 5, 100)}
     except Exception as e:
         raise HTTPException(status_code=500, detail="Progress update failed")
 
-
-# ─── CAREER ASSESSMENT ──────────────────────────────────────────────────────
 
 @app.post("/career-assessment")
 async def career_assessment(request: AssessmentRequest):
@@ -445,8 +405,7 @@ async def career_assessment(request: AssessmentRequest):
         data = groq_json(
             system='Career counsellor for ALL fields (tech, arts, medicine, law, business, design, etc.). Return ONLY JSON.',
             user=(
-                f'Student answers: {request.answers}\n'
-                f'Interests: {request.interests}\n'
+                f'Student answers: {request.answers}\nInterests: {request.interests}\n'
                 f'Education level: {request.education_level}\n'
                 'Recommend 3 career paths (not only tech). '
                 'Return: {"careers":[{"title":"","field":"","match_score":85,'
@@ -458,8 +417,6 @@ async def career_assessment(request: AssessmentRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail="Assessment failed")
 
-
-# ─── EXPLORE CAREER FIELD ───────────────────────────────────────────────────
 
 @app.post("/explore-field")
 async def explore_field(request: CareerExploreRequest):
